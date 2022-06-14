@@ -1,7 +1,7 @@
-from re import L
 from tkinter import *
 from pathlib import Path
 from tkinter import filedialog
+from tkinter import messagebox
 from PIL import ImageTk, Image
 
 
@@ -18,6 +18,8 @@ root.iconbitmap(str(BITMAP))
 active_frame_elements = []
 
 root.filename = ''
+root.icon_size = ''
+
 def remove_frame_elements():
     for element in active_frame_elements:
         element.forget()
@@ -26,19 +28,33 @@ def remove_frame_elements():
 def main_menu_frame():
     global desc_Label
     global resize_Btn
+    global create_icon_Btn
+    global icon_size
 
     root.filename = ''
+    root.icon_size = ''
+    icon_size.set('')
 
     remove_frame_elements()
 
+
+    active_frame_elements.append(desc_Label)
+    active_frame_elements.append(resize_Btn)
+    active_frame_elements.append(create_icon_Btn)
+
     desc_Label.pack()
     resize_Btn.pack()
+    create_icon_Btn.pack()
 
 
-
+def select_image():
+    root.filename = filedialog.askopenfilename(initialdir=BASE_DIR, title='Select File', filetypes=(
+        ('JPEG, JPG', '*.jpg'), ('PNG Files', '*.png')
+    ))
 
 def resize_frame():
     # global title_Label
+    remove_frame_elements()
     global desc_Label
     global resize_Btn
 
@@ -48,9 +64,12 @@ def resize_frame():
     global menu_Btn
     global select_image_Btn
     global image_label
+    global resize_image
 
     desc_Label.forget()
     resize_Btn.forget()
+
+    select_image_Btn = Button(root, text='Select File', comman=resize_image)
 
 
     if not root.filename:
@@ -72,7 +91,7 @@ def resize_frame():
     active_frame_elements.append(image_label)
 
 
-def select_image():
+def resize_image():
     global image_label
     global resize_accept_Btn
     global width_label
@@ -84,9 +103,7 @@ def select_image():
 
     resize_accept_Btn.forget()
     image_label.forget()
-    root.filename = filedialog.askopenfilename(initialdir=BASE_DIR, title='Select File', filetypes=(
-            ('JPEG Files', '*.jpg'),('PNG Files', '*.png')
-        ))
+    select_image()
     
 
     if root.filename:
@@ -145,42 +162,160 @@ def resize_accept():
     if root.filedirectory:
         if sp.get() == 1:
             
-            img = Image.open(root.filename)
+            img = Image.open(root.filename).copy()
             dimensions = (img_width, img_width)
             img.thumbnail(dimensions)
 
             destination = Path() / root.filedirectory / Path(root.filename).absolute().name
-            count = 1
+            temp = destination
+            count = 0
             dest_exists = True
             while dest_exists:
-                if destination.exists():
-                    destination = destination.parent / f"{destination.stem}{count}{destination.suffix}" 
+                if count != 0:
+                    temp = destination.parent / f"{destination.stem}{count}{destination.suffix}"
+
+
+                if temp.exists():
                     count += 1
                 else:
+                    destination = temp
                     dest_exists = False
 
             print(destination)
             img.save(destination)   
+
+            img.close()
+
         else:
             img_height = int(height_entry.get())
 
             img = Image.open(root.filename)
             dimensions = (img_width, img_height)
-            img.thumbnail(dimensions)
+            img = img.resize(dimensions)
 
             destination = Path() / root.filedirectory / Path(root.filename).absolute().name
-            count = 1
+            temp = destination
+            count = 0
 
             dest_exists = True
             while dest_exists:
-                if destination.exists():
-                    destination = destination.parent / f'{destination.stem}{count}{destination.suffix}'
+                if count != 0:
+                    temp  = destination.parent / f"{destination.stem}{count}{destination.suffix}"
+
+                if temp.exists():
                     count += 1
                 else:
+                    destination = temp
                     dest_exists = False
                 
-                print(destination)
-                img.save(destination)
+            # print(img.width,img.height)
+            img.save(destination)
+            img.close()
+
+    root.filename = ''
+    messagebox.showinfo('Success!', 'Picture Changed Succesfuly!')
+    main_menu_frame()
+
+
+def select_convert_image():
+    global convert_frame
+
+    select_image()
+    convert_frame()
+
+
+def convert_icon():
+    global convert_frame
+
+    sizes = (root.icon_size,root.icon_size)
+    # print(root.filename)
+    img = Image.open(root.filename).copy()
+    img.thumbnail(sizes)
+
+    messagebox.showinfo('Select Save Location',
+        'Please select the saving location.'
+    )
+
+    root.filedirectory = filedialog.askdirectory(initialdir=BASE_DIR)
+
+    if root.filedirectory:
+
+        destination = Path() / root.filedirectory / f'{Path(root.filename).absolute().stem}.ico'
+        temp = destination 
+        count = 0
+        dest_exist = True
+
+        while dest_exist:
+
+            if count != 0:
+                temp = destination.parent / f'{destination.stem}{count}{destination.suffix}'
+
+            if temp.exists():
+                count += 1
+            else:
+                destination = temp
+                dest_exist = False
+
+
+        print(destination)        
+        img.save(destination, format='ICO')
+        messagebox.showinfo('Success!', 'Icon generated Succesfully!')
+        main_menu_frame()
+        
+
+
+def convert_frame():
+    global create_icon_Btn
+    global select_image_Btn
+    global image_label
+    global convert_cancel_Btn
+    global convert_accept_Btn
+    global icon_sizes_options
+    global icon_sizes_label
+
+    remove_frame_elements()
+
+    select_image_Btn = Button(root, text='Select File', command=select_convert_image)
+
+
+    if not root.filename:
+        image_label = Label(root, text='No image Selected!')
+    else:
+        image_label = Label(root, text=f'Selected Image:{root.filename}')
+
+    if root.filename and root.icon_size:
+        convert_accept_Btn = Button(root, text='Convert', command=convert_icon)
+    else:
+        convert_accept_Btn = Button(root, text='Convert', state=DISABLED)
+
+
+    active_frame_elements.clear()
+    # active_frame_elements.append(create_icon_Btn)
+    active_frame_elements.append(convert_cancel_Btn)
+    active_frame_elements.append(convert_accept_Btn)
+    active_frame_elements.append(image_label)
+    active_frame_elements.append(icon_sizes_options)
+    active_frame_elements.append(icon_sizes_label)
+    active_frame_elements.append(select_image_Btn)
+
+
+    # create_icon_Btn.pack()
+    icon_sizes_label.pack()
+    icon_sizes_options.pack()
+    image_label.pack()
+    select_image_Btn.pack()
+    convert_accept_Btn.pack()
+    convert_cancel_Btn.pack()
+
+
+
+def select_convert_size(value):
+    size = int(str(value).split('x')[0])
+
+    root.icon_size = size
+    # print(root.icon_size)
+    convert_frame()
+
 
 
 
@@ -188,9 +323,6 @@ def resize_accept():
 title_Label = Label(root, text='KOKOA')
 desc_Label = Label(root, text='Here you can convert images and transform them.')
 menu_Btn = Button(root, text='Menu', command=main_menu_frame)
-
-
-# img = ImageTk.PhotoImage(Image.open(BASE_DIR/"orb.jpg"))
 
 
 # Resizing
@@ -206,17 +338,36 @@ height_entry = Entry(root)
 equality_checkbox = Checkbutton(root, text='Same Width and Height', variable=sp, command=resize_same_proportions)
 
 
-select_image_Btn = Button(root, text='Select File', command=select_image)
+select_image_Btn = Button(root, text='Select File')
 
 resize_Btn = Button(root, text='Resize', command=resize_frame)
 resize_cancel_Btn = Button(root, text='Cancel', command=main_menu_frame)
 resize_accept_Btn = Button(root, text='Accept', state=DISABLED, command=resize_accept)
 
 
+
+# Convert button
+create_icon_Btn = Button(root, text='Icon', command=convert_frame)
+convert_cancel_Btn = Button(root, text='Cancel', command=main_menu_frame)
+convert_accept_Btn = Button(root, text='Convert', state=DISABLED)
+
+icon_size = StringVar()
+# icon_size.set('128x128')
+sizes = ['256x256',"128x128", '64x64', '32x32', '16x16']
+icon_sizes_label = Label(root, text='Sizes:')
+icon_sizes_options = OptionMenu(root, icon_size, *sizes, command=select_convert_size)
+
+
+
 title_Label.pack()
 desc_Label.pack()
 resize_Btn.pack()
+create_icon_Btn.pack()
 
+
+active_frame_elements.append(desc_Label)
+active_frame_elements.append(resize_Btn)
+active_frame_elements.append(create_icon_Btn)
 
 
 root.mainloop()
